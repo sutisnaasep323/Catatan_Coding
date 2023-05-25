@@ -134,3 +134,5 @@ class DoaHafalanFragment : Fragment() {
 
 </menu>
 ```
+
+## Note: Jika ingin manipulasi bottom, Pastikan ID pada bottom_navigation dan bottom_nav_menu itu sama
