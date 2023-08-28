@@ -2,8 +2,92 @@ Save dark theme with Data Store use SwitchMaterialButton
 
 Example,
 
-1. First, Create Activity, example name like **SettingActivity**
-2. Second, change **ActivitySetting.xml**
+1. Add Depencencies
+
+```
+   implementation "androidx.datastore:datastore-preferences:1.0.0"
+   implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1"
+   implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.6.1"
+   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2"
+   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2"
+
+```
+2. Create SettingPreferences
+
+```
+import androidx.datastore.preferences.core.Preferences
+ 
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings") // settings is name file DataStore
+ 
+class SettingPreferences private constructor(private val dataStore: DataStore<Preferences>) {
+ 
+   private val THEME_KEY = booleanPreferencesKey("theme_setting") //KEY
+
+   //mengambil pengaturan tema
+   fun getThemeSetting(): Flow<Boolean> {
+       return dataStore.data.map { preferences ->
+           preferences[THEME_KEY] ?: false
+       }
+   }
+
+   //menyimpan pengaturan tema
+   suspend fun saveThemeSetting(isDarkModeActive: Boolean) {
+       dataStore.edit { preferences ->
+           preferences[THEME_KEY] = isDarkModeActive
+       }
+   }
+
+   // membuat singleton dari SettingPreferences
+   companion object {
+       @Volatile
+       private var INSTANCE: SettingPreferences? = null
+ 
+       fun getInstance(dataStore: DataStore<Preferences>): SettingPreferences {
+           return INSTANCE ?: synchronized(this) {
+               val instance = SettingPreferences(dataStore)
+               INSTANCE = instance
+               instance
+           }
+       }
+   }
+}
+
+```
+
+3. Create SettingViewModel
+
+```
+class SettingViewModel(private val pref: SettingPreferences) : ViewModel() {
+   fun getThemeSettings(): LiveData<Boolean> {
+       return pref.getThemeSetting().asLiveData()
+   }
+ 
+   fun saveThemeSetting(isDarkModeActive: Boolean) {
+       viewModelScope.launch {
+           pref.saveThemeSetting(isDarkModeActive)
+       }
+   }
+}
+
+```
+
+4. Create ViewModelFactory
+
+```
+class ViewModelFactory(private val pref: SettingPreferences) : NewInstanceFactory() {
+ 
+   @Suppress("UNCHECKED_CAST")
+   override fun <T : ViewModel> create(modelClass: Class<T>): T {
+       if (modelClass.isAssignableFrom(SettingViewModel::class.java)) {
+           return MainViewModel(pref) as T
+       }
+       throw IllegalArgumentException("Unknown ViewModel class: " + modelClass.name)
+   }
+}
+```
+
+6. Create Activity, example name like **SettingActivity**
+7. Change **ActivitySetting.xml** add SwitchMaterial
 
 ```
 
@@ -19,7 +103,7 @@ Example,
 
 ```
 
-3. Third, change **SettingActivity**
+8. Change **SettingActivity**
 
 ```
 
@@ -67,6 +151,7 @@ Done! but if you want using Dark Mode in All Activity/Fragment you paste code in
 ```
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
 class SplashScreenActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
